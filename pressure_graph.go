@@ -9,6 +9,8 @@ import (
 )
 
 func newPressureGraph(pressures []pressure.ResourcePressure, pressureType pressureType, graphMetric graphMetric) *widgets.Plot {
+	pressures = pressures[max(len(pressures)-70, 0):]
+
 	var someData, fullData []float64
 	for _, p := range pressures {
 		switch graphMetric {

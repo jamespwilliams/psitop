@@ -16,7 +16,7 @@ var numCPUs = runtime.NumCPU()
 const (
 	renderPeriod  = 1000 * time.Millisecond
 	fetchPeriod   = 500 * time.Millisecond
-	maxDataLength = 1000
+	maxDataLength = 100
 )
 
 func main() {
@@ -96,6 +96,22 @@ func fetchPressures(mux *sync.Mutex, data *[]*pressure.AllPressures) {
 }
 
 func render(resource resource, graphMetric graphMetric, pressureType pressureType, data []*pressure.AllPressures) {
+	selectors := renderSelectors(resource, pressureType, graphMetric)
+
+	var pane []ui.Drawable
+	if resource == resourceAll {
+		pane = renderAllPane(data, pressureType)
+	} else {
+		pane = renderSingleResourcePane(data, resource, pressureType, graphMetric)
+	}
+
+	var items []ui.Drawable
+	items = append(items, selectors...)
+	items = append(items, pane...)
+	ui.Render(items...)
+}
+
+func renderSelectors(resource resource, pressureType pressureType, graphMetric graphMetric) []ui.Drawable {
 	resourceSelector := widgets.NewTabPane("[a]ll", "[c]pu", "[m]emory", "[i]o")
 	resourceSelector.PaddingLeft = 1
 	resourceSelector.Title = "Resource"
@@ -123,19 +139,7 @@ func render(resource resource, graphMetric graphMetric, pressureType pressureTyp
 	graphMetricSelector.ActiveTabIndex = graphMetric.tabIndex()
 	graphMetricSelector.ActiveTabStyle.Modifier = ui.ModifierBold
 
-	var pane []ui.Drawable
-	if resource == resourceAll {
-		pane = renderAllPane(data, pressureType)
-	} else {
-		pane = renderSingleResourcePane(data, resource, pressureType, graphMetric)
-	}
-
-	var items []ui.Drawable
-	items = append(items, resourceSelector)
-	items = append(items, graphMetricSelector)
-	items = append(items, pressureTypeSelector)
-	items = append(items, pane...)
-	ui.Render(items...)
+	return []ui.Drawable{resourceSelector, pressureTypeSelector, graphMetricSelector}
 }
 
 func renderSingleResourcePane(data []*pressure.AllPressures, resource resource, pressureType pressureType, graphMetric graphMetric) []ui.Drawable {
@@ -145,58 +149,46 @@ func renderSingleResourcePane(data []*pressure.AllPressures, resource resource, 
 	}
 	x, y := 4, 5
 
+	var title string
+	var titleStyle ui.Style
+
+	pressures := make([]pressure.ResourcePressure, len(data))
+
 	switch resource {
 	case resourceCPU:
-		pressures := make([]pressure.ResourcePressure, min(len(data), 70))
-		for i, p := range data[max(len(data)-70, 0):] {
+		title = "CPU"
+		titleStyle = ui.NewStyle(ui.ColorCyan, ui.ColorBlack, ui.ModifierBold)
+
+		for i, p := range data {
 			pressures[i] = p.CPU
 		}
-
-		table := newPressureTable("CPU", pressures, pressureType)
-		table.SetRect(x, y, x+tableWidth, y+tableHeight)
-		table.TitleStyle = ui.NewStyle(ui.ColorCyan, ui.ColorBlack, ui.ModifierBold)
-		y += tableHeight + 1
-
-		graphHeight := 32
-		graph := newPressureGraph(pressures, pressureType, graphMetric)
-		graph.SetRect(x, y, x+tableWidth, y+graphHeight)
-
-		return []ui.Drawable{table, graph}
 	case resourceMemory:
-		pressures := make([]pressure.ResourcePressure, min(len(data), 70))
-		for i, p := range data[max(len(data)-70, 0):] {
+		title = "Memory"
+		titleStyle = ui.NewStyle(ui.ColorBlue, ui.ColorBlack, ui.ModifierBold)
+
+		for i, p := range data {
 			pressures[i] = p.Memory
 		}
-
-		table := newPressureTable("Memory", pressures, pressureType)
-		table.SetRect(x, y, x+tableWidth, y+tableHeight)
-		table.TitleStyle = ui.NewStyle(ui.ColorBlue, ui.ColorBlack, ui.ModifierBold)
-		y += tableHeight + 1
-
-		graphHeight := 32
-		graph := newPressureGraph(pressures, pressureType, graphMetric)
-		graph.SetRect(x, y, x+tableWidth, y+graphHeight)
-
-		return []ui.Drawable{table, graph}
 	case resourceIO:
-		pressures := make([]pressure.ResourcePressure, min(len(data), 70))
-		for i, p := range data[max(len(data)-70, 0):] {
+		title = "IO"
+		titleStyle = ui.NewStyle(ui.ColorMagenta, ui.ColorBlack, ui.ModifierBold)
+
+		for i, p := range data {
 			pressures[i] = p.IO
 		}
-
-		table := newPressureTable("IO", pressures, pressureType)
-		table.SetRect(x, y, x+tableWidth, y+tableHeight)
-		table.TitleStyle = ui.NewStyle(ui.ColorMagenta, ui.ColorBlack, ui.ModifierBold)
-		y += tableHeight + 1
-
-		graphHeight := 32
-		graph := newPressureGraph(pressures, pressureType, graphMetric)
-		graph.SetRect(x, y, x+tableWidth, y+graphHeight)
-
-		return []ui.Drawable{table, graph}
-	default:
-		return nil
 	}
+
+	table := newPressureTable(title, pressures, pressureType)
+	table.TitleStyle = titleStyle
+	table.SetRect(x, y, x+tableWidth, y+tableHeight)
+
+	y += tableHeight + 1
+
+	graphHeight := 32
+	graph := newPressureGraph(pressures, pressureType, graphMetric)
+	graph.SetRect(x, y, x+tableWidth, y+graphHeight)
+
+	return []ui.Drawable{table, graph}
 }
 
 func renderAllPane(data []*pressure.AllPressures, pressureType pressureType) []ui.Drawable {
@@ -208,25 +200,24 @@ func renderAllPane(data []*pressure.AllPressures, pressureType pressureType) []u
 	tableWidth := 90
 	x, y := 4, 5
 
-	cpuPressures := make([]pressure.ResourcePressure, min(len(data), 70))
-	for i, p := range data[max(len(data)-70, 0):] {
+	cpuPressures := make([]pressure.ResourcePressure, len(data))
+	for i, p := range data {
 		cpuPressures[i] = p.CPU
 	}
 
-	memPressures := make([]pressure.ResourcePressure, min(len(data), 70))
-	for i, p := range data[max(len(data)-70, 0):] {
+	memPressures := make([]pressure.ResourcePressure, len(data))
+	for i, p := range data {
 		memPressures[i] = p.Memory
 	}
 
-	ioPressures := make([]pressure.ResourcePressure, min(len(data), 70))
-	for i, p := range data[max(len(data)-70, 0):] {
+	ioPressures := make([]pressure.ResourcePressure, len(data))
+	for i, p := range data {
 		ioPressures[i] = p.IO
 	}
 
 	cpuTable := newPressureTable("CPU", cpuPressures, pressureType)
 	cpuTable.SetRect(x, y, x+tableWidth, y+tableHeight)
 	cpuTable.TitleStyle = ui.NewStyle(ui.ColorCyan, ui.ColorBlack, ui.ModifierBold)
-
 	y += tableHeight + 1
 
 	memTable := newPressureTable("Memory", memPressures, pressureType)
