@@ -9,6 +9,10 @@ high-resolution 10 second load averages.
 
 ## Running psitop
 
+First, note that psitop needs to read `/proc/pressure`, which requires Linux
+kernel version 4.20 or higher. Your distribution might disable /proc/pressure
+by default - if so, you'll need to enable it before using this tool.
+
 ### Go
 
 ```
