@@ -54,5 +54,9 @@ func calculatePressureGraphMaxVal(data [][]float64) float64 {
 		}
 	}
 
-	return math.Pow(2, math.Ceil(math.Log2(max)))
+	maxVal := math.Pow(2, math.Ceil(math.Log2(max)))
+	if maxVal < 1.0 {
+		return 1.0
+	}
+	return maxVal
 }
