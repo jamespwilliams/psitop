@@ -28,6 +28,10 @@ If you have Nix installed and flakes enabled:
 nix run github:jamespwilliams/psitop
 ```
 
+### Arch Linux
+
+`psitop` is in the AUR: https://aur.archlinux.org/packages/psitop.
+
 ## Usage
 
 Use the keybindings shown in the interface.
