@@ -9,13 +9,7 @@ import (
 	"github.com/jamespwilliams/psitop/pressure"
 )
 
-func newPressureTable(title string, pressures []pressure.ResourcePressure, pressureType pressureType) *widgets.Table {
-	current := pressures[len(pressures)-1]
-	var previous *pressure.ResourcePressure
-	if len(pressures) > 2 {
-		previous = &pressures[len(pressures)-2]
-	}
-
+func newPressureTable(title string, somePressures, fullPressures []pressure.Pressure) *widgets.Table {
 	table := widgets.NewTable()
 	table.Title = title
 	table.TextStyle = ui.NewStyle(ui.ColorWhite)
@@ -28,28 +22,27 @@ func newPressureTable(title string, pressures []pressure.ResourcePressure, press
 		{"", "avg10", "avg60", "avg300"},
 	}
 
-	if pressureType == some || pressureType == both {
-		var previousSome *pressure.PressureSnapshot
-		if previous != nil {
-			previousSome = &previous.SomePressure
+	allPressures := map[string][]pressure.Pressure{"some": somePressures, "full": fullPressures}
+	for _, pressureType := range []string{"some", "full"} {
+		pressures := allPressures[pressureType]
+
+		if len(pressures) == 0 {
+			continue
 		}
 
-		table.Rows = append(table.Rows, getPressureRow("[some](mod:bold)", current.SomePressure, previousSome))
-	}
-
-	if pressureType == full || pressureType == both {
-		var previousFull *pressure.PressureSnapshot
-		if previous != nil {
-			previousFull = &previous.FullPressure
+		current := pressures[len(pressures)-1]
+		var previous *pressure.Pressure
+		if len(pressures) > 2 {
+			previous = &pressures[len(pressures)-2]
 		}
 
-		table.Rows = append(table.Rows, getPressureRow("[full](mod:bold)", current.FullPressure, previousFull))
+		table.Rows = append(table.Rows, getPressureRow(fmt.Sprintf("[%s](mod:bold)", pressureType), current, previous))
 	}
 
 	return table
 }
 
-func getPressureRow(title string, current pressure.PressureSnapshot, previous *pressure.PressureSnapshot) []string {
+func getPressureRow(title string, current pressure.Pressure, previous *pressure.Pressure) []string {
 	row := []string{title}
 
 	previousAvg10, previousAvg60, previousAvg300 := 0.0, 0.0, 0.0
