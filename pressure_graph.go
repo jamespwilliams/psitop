@@ -8,37 +8,46 @@ import (
 	"github.com/jamespwilliams/psitop/pressure"
 )
 
-func newPressureGraph(pressures []pressure.ResourcePressure, pressureType pressureType, graphMetric graphMetric) *widgets.Plot {
-	pressures = pressures[max(len(pressures)-70, 0):]
+func newPressureGraph(somePressures, fullPressures []pressure.Pressure, graphMetric graphMetric) *widgets.Plot {
+	somePressures = somePressures[max(len(somePressures)-70, 0):]
+	fullPressures = fullPressures[max(len(fullPressures)-70, 0):]
 
 	var someData, fullData []float64
-	for _, p := range pressures {
+	for _, p := range somePressures {
 		switch graphMetric {
 		case avg10:
-			someData = append(someData, p.SomePressure.Avg10)
-			fullData = append(fullData, p.FullPressure.Avg10)
+			someData = append(someData, p.Avg10)
 		case avg60:
-			someData = append(someData, p.SomePressure.Avg60)
-			fullData = append(fullData, p.FullPressure.Avg60)
+			someData = append(someData, p.Avg60)
 		default:
-			someData = append(someData, p.SomePressure.Avg300)
-			fullData = append(fullData, p.FullPressure.Avg300)
+			someData = append(someData, p.Avg300)
+		}
+	}
+
+	for _, p := range fullPressures {
+		switch graphMetric {
+		case avg10:
+			fullData = append(fullData, p.Avg10)
+		case avg60:
+			fullData = append(fullData, p.Avg60)
+		default:
+			fullData = append(fullData, p.Avg300)
 		}
 	}
 
 	p := widgets.NewPlot()
 	p.Title = "Pressure"
+	p.Data = [][]float64{}
+	p.LineColors = []ui.Color{}
 
-	switch pressureType {
-	case some:
-		p.Data = [][]float64{someData}
-		p.LineColors = []ui.Color{ui.ColorGreen}
-	case full:
-		p.Data = [][]float64{fullData}
-		p.LineColors = []ui.Color{ui.ColorYellow}
-	default:
-		p.Data = [][]float64{someData, fullData}
-		p.LineColors = []ui.Color{ui.ColorGreen, ui.ColorYellow}
+	if len(someData) > 0 {
+		p.Data = append(p.Data, someData)
+		p.LineColors = append(p.LineColors, ui.ColorGreen)
+	}
+
+	if len(fullData) > 0 {
+		p.Data = append(p.Data, fullData)
+		p.LineColors = append(p.LineColors, ui.ColorYellow)
 	}
 
 	p.MaxVal = calculatePressureGraphMaxVal(p.Data)

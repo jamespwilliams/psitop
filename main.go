@@ -57,12 +57,16 @@ func main() {
 				return
 			case "a":
 				resource = resourceAll
+				pressureType = both
 			case "c":
 				resource = resourceCPU
+				pressureType = some
 			case "m":
 				resource = resourceMemory
+				pressureType = both
 			case "i":
 				resource = resourceIO
+				pressureType = both
 			case "1":
 				graphMetric = avg10
 			case "6":
@@ -72,9 +76,13 @@ func main() {
 			case "s":
 				pressureType = some
 			case "f":
-				pressureType = full
+				if resource != resourceCPU {
+					pressureType = full
+				}
 			case "b":
-				pressureType = both
+				if resource != resourceCPU {
+					pressureType = both
+				}
 			}
 		}
 	}
@@ -122,6 +130,9 @@ func renderSelectors(resource resource, pressureType pressureType, graphMetric g
 	resourceSelector.ActiveTabStyle.Modifier = ui.ModifierBold
 
 	pressureTypeSelector := widgets.NewTabPane("[s]ome", "[f]ull", "[b]oth")
+	if resource == resourceCPU {
+		pressureTypeSelector.TabNames = []string{"[s]ome"}
+	}
 	pressureTypeSelector.PaddingLeft = 1
 	pressureTypeSelector.Title = "Some/full"
 	pressureTypeSelector.TitleStyle = ui.NewStyle(ui.ColorWhite, ui.ColorBlack, ui.ModifierBold)
@@ -144,7 +155,7 @@ func renderSelectors(resource resource, pressureType pressureType, graphMetric g
 
 func renderSingleResourcePane(data []*pressure.AllPressures, resource resource, pressureType pressureType, graphMetric graphMetric) []ui.Drawable {
 	tableWidth, tableHeight := 90, 5
-	if pressureType == both {
+	if pressureType == both && resource != resourceCPU {
 		tableHeight = 7
 	}
 	x, y := 4, 5
@@ -152,7 +163,8 @@ func renderSingleResourcePane(data []*pressure.AllPressures, resource resource, 
 	var title string
 	var titleStyle ui.Style
 
-	pressures := make([]pressure.ResourcePressure, len(data))
+	somePressures := make([]pressure.Pressure, len(data))
+	fullPressures := make([]pressure.Pressure, len(data))
 
 	switch resource {
 	case resourceCPU:
@@ -160,73 +172,89 @@ func renderSingleResourcePane(data []*pressure.AllPressures, resource resource, 
 		titleStyle = ui.NewStyle(ui.ColorCyan, ui.ColorBlack, ui.ModifierBold)
 
 		for i, p := range data {
-			pressures[i] = p.CPU
+			somePressures[i] = p.CPU.SomePressure
 		}
+		fullPressures = nil
 	case resourceMemory:
 		title = "Memory"
 		titleStyle = ui.NewStyle(ui.ColorBlue, ui.ColorBlack, ui.ModifierBold)
 
 		for i, p := range data {
-			pressures[i] = p.Memory
+			somePressures[i] = p.Memory.SomePressure
+			fullPressures[i] = p.Memory.FullPressure
 		}
 	case resourceIO:
 		title = "IO"
 		titleStyle = ui.NewStyle(ui.ColorMagenta, ui.ColorBlack, ui.ModifierBold)
 
 		for i, p := range data {
-			pressures[i] = p.IO
+			somePressures[i] = p.IO.SomePressure
+			fullPressures[i] = p.IO.FullPressure
 		}
 	}
 
-	table := newPressureTable(title, pressures, pressureType)
+	var table *widgets.Table
+	switch pressureType {
+	case some:
+		table = newPressureTable(title, somePressures, nil)
+	case full:
+		table = newPressureTable(title, nil, fullPressures)
+	case both:
+		table = newPressureTable(title, somePressures, fullPressures)
+	}
+
 	table.TitleStyle = titleStyle
 	table.SetRect(x, y, x+tableWidth, y+tableHeight)
 
 	y += tableHeight + 1
 
 	graphHeight := 32
-	graph := newPressureGraph(pressures, pressureType, graphMetric)
+	graph := newPressureGraph(somePressures, fullPressures, graphMetric)
 	graph.SetRect(x, y, x+tableWidth, y+graphHeight)
 
 	return []ui.Drawable{table, graph}
 }
 
 func renderAllPane(data []*pressure.AllPressures, pressureType pressureType) []ui.Drawable {
-	tableHeight := 5
+	cpuTableHeight, nonCPUTableHeight := 5, 5
 	if pressureType == both {
-		tableHeight = 7
+		nonCPUTableHeight = 7
 	}
 
 	tableWidth := 90
 	x, y := 4, 5
 
-	cpuPressures := make([]pressure.ResourcePressure, len(data))
+	cpuSomePressure := make([]pressure.Pressure, len(data))
 	for i, p := range data {
-		cpuPressures[i] = p.CPU
+		cpuSomePressure[i] = p.CPU.SomePressure
 	}
 
-	memPressures := make([]pressure.ResourcePressure, len(data))
+	memSomePressure := make([]pressure.Pressure, len(data))
+	memFullPressure := make([]pressure.Pressure, len(data))
 	for i, p := range data {
-		memPressures[i] = p.Memory
+		memSomePressure[i] = p.Memory.SomePressure
+		memFullPressure[i] = p.Memory.FullPressure
 	}
 
-	ioPressures := make([]pressure.ResourcePressure, len(data))
+	ioSomePressure := make([]pressure.Pressure, len(data))
+	ioFullPressure := make([]pressure.Pressure, len(data))
 	for i, p := range data {
-		ioPressures[i] = p.IO
+		ioSomePressure[i] = p.IO.SomePressure
+		ioFullPressure[i] = p.IO.FullPressure
 	}
 
-	cpuTable := newPressureTable("CPU", cpuPressures, pressureType)
-	cpuTable.SetRect(x, y, x+tableWidth, y+tableHeight)
+	cpuTable := newPressureTable("CPU", cpuSomePressure, nil)
+	cpuTable.SetRect(x, y, x+tableWidth, y+cpuTableHeight)
 	cpuTable.TitleStyle = ui.NewStyle(ui.ColorCyan, ui.ColorBlack, ui.ModifierBold)
-	y += tableHeight + 1
+	y += cpuTableHeight + 1
 
-	memTable := newPressureTable("Memory", memPressures, pressureType)
-	memTable.SetRect(x, y, x+tableWidth, y+tableHeight)
+	memTable := newPressureTable("Memory", memSomePressure, memFullPressure)
+	memTable.SetRect(x, y, x+tableWidth, y+nonCPUTableHeight)
 	memTable.TitleStyle = ui.NewStyle(ui.ColorBlue, ui.ColorBlack, ui.ModifierBold)
-	y += tableHeight + 1
+	y += nonCPUTableHeight + 1
 
-	ioTable := newPressureTable("IO", ioPressures, pressureType)
-	ioTable.SetRect(x, y, x+tableWidth, y+tableHeight)
+	ioTable := newPressureTable("IO", ioSomePressure, ioFullPressure)
+	ioTable.SetRect(x, y, x+tableWidth, y+nonCPUTableHeight)
 	ioTable.TitleStyle = ui.NewStyle(ui.ColorMagenta, ui.ColorBlack, ui.ModifierBold)
 
 	return []ui.Drawable{cpuTable, memTable, ioTable}
