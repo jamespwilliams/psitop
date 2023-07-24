@@ -14,11 +14,6 @@ type Pressure struct {
 	Total  int64
 }
 
-type ResourcePressure struct {
-	SomePressure Pressure
-	FullPressure *Pressure
-}
-
 type CPUPressure struct {
 	SomePressure Pressure
 }
