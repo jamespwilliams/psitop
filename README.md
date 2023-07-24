@@ -16,7 +16,7 @@ by default - if so, you'll need to enable it before using this tool.
 ### Go
 
 ```
-go install https://github.com/jamespwilliams/psitop@latest
+go install github.com/jamespwilliams/psitop@latest
 psitop
 ```
 
