@@ -35,3 +35,6 @@ nix run github:jamespwilliams/psitop
 ## Usage
 
 Use the keybindings shown in the interface.
+
+Consider trying out a tool like [stress](https://linux.die.net/man/1/stress)
+while running `psitop` to see how `psitop` displays resource contention.
