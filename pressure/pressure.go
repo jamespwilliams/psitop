@@ -106,7 +106,7 @@ func parseCPUPressure(s string) (some *Pressure, err error) {
 
 func parseNonCPUPressure(s string) (some *Pressure, full *Pressure, err error) {
 	lines := strings.Split(s, "\n")
-	if len(lines) < 2 {
+	if len(lines) < 3 {
 		return nil, nil, fmt.Errorf("expected at least 2 lines in /proc/pressure contents %q, got %d", s, len(lines))
 	}
 
