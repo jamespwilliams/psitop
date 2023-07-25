@@ -1,0 +1,24 @@
+name: "Upload docker image"
+on:
+  push:
+    # TODO: remove:
+    tags:
+      - '*'
+jobs:
+  build_and_push_image:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v22
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - run: |
+        nix build .#dockerImage
+        image=$(docker load < result | sed -n '$s/^Loaded image: //p')
+        tag=${{  github.ref_name }}
+        docker image tag "$image" jamespwilliams/psitop:$tag
+        docker image tag "$image" jamespwilliams/psitop:latest
+        docker image push --all-tags jamespwilliams/psitop
