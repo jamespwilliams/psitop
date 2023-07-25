@@ -28,6 +28,12 @@ If you have Nix installed and flakes enabled:
 nix run github:jamespwilliams/psitop
 ```
 
+### Docker
+
+```
+docker run -it jamespwilliams/psitop:latest
+```
+
 ### Arch Linux
 
 `psitop` is in the AUR: https://aur.archlinux.org/packages/psitop.
