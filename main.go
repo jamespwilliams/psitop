@@ -34,11 +34,20 @@ func main() {
 	}
 	defer ui.Close()
 
-	fetchPressures(&dataMux, &data)
+	err := fetchPressures(&dataMux, &data)
+	if err != nil {
+		ui.Close()
+		log.Fatalln(err.Error())
+	}
 	go func() {
 		for {
+			var err error
 			time.Sleep(fetchPeriod)
-			fetchPressures(&dataMux, &data)
+			err = fetchPressures(&dataMux, &data)
+			if err != nil {
+				ui.Close()
+				log.Fatalln(err.Error())
+			}
 		}
 	}()
 
@@ -88,19 +97,20 @@ func main() {
 	}
 }
 
-func fetchPressures(mux *sync.Mutex, data *[]*pressure.AllPressures) {
+func fetchPressures(mux *sync.Mutex, data *[]*pressure.AllPressures) error {
 	mux.Lock()
 	defer mux.Unlock()
 
 	pressures, err := pressure.CurrentAllPressures()
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
 	*data = append(*data, pressures)
 
 	if len(*data) > maxDataLength {
 		*data = (*data)[1:]
 	}
+	return nil
 }
 
 func render(resource resource, graphMetric graphMetric, pressureType pressureType, data []*pressure.AllPressures) {
