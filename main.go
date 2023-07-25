@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"runtime"
 	"sync"
@@ -20,6 +21,12 @@ const (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalln(err)
+	}
+}
+
+func run() error {
 	var (
 		resource     resource     = resourceAll
 		graphMetric  graphMetric  = avg10
@@ -29,24 +36,23 @@ func main() {
 		data    []*pressure.AllPressures
 	)
 
+	fetchErr := make(chan error, 1)
+
 	if err := ui.Init(); err != nil {
-		log.Fatalf("failed to initialize termui: %v", err)
+		return fmt.Errorf("failed to initialize termui: %w", err)
 	}
 	defer ui.Close()
 
 	err := fetchPressures(&dataMux, &data)
 	if err != nil {
-		ui.Close()
-		log.Fatalln(err.Error())
+		return fmt.Errorf("failed to fetch pressures: %w", err)
 	}
+
 	go func() {
 		for {
-			var err error
 			time.Sleep(fetchPeriod)
-			err = fetchPressures(&dataMux, &data)
-			if err != nil {
-				ui.Close()
-				log.Fatalln(err.Error())
+			if err := fetchPressures(&dataMux, &data); err != nil {
+				fetchErr <- fmt.Errorf("failed to fetch pressures: %w", err)
 			}
 		}
 	}()
@@ -59,11 +65,13 @@ func main() {
 		dataMux.Unlock()
 
 		select {
+		case err := <-fetchErr:
+			return err
 		case <-time.After(renderPeriod):
 		case e := <-uiEvents:
 			switch e.ID {
 			case "q", "<C-c>":
-				return
+				return nil
 			case "a":
 				resource = resourceAll
 				pressureType = both
