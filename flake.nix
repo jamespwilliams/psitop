@@ -26,31 +26,40 @@
     {
 
       # Provide some binary packages for selected system types.
-      packages = forAllSystems (system:
-        let
-          pkgs = nixpkgsFor.${system};
-        in
-        {
-          psitop = pkgs.buildGoModule {
-            pname = "psitop";
-            inherit version;
-            # In 'nix develop', we don't need a copy of the source tree
-            # in the Nix store.
-            src = ./.;
+      packages = forAllSystems
+        (system:
+          let
+            pkgs = nixpkgsFor.${system};
 
-            # This hash locks the dependencies of this package. It is
-            # necessary because of how Go requires network access to resolve
-            # VCS.  See https://www.tweag.io/blog/2021-03-04-gomod2nix/ for
-            # details. Normally one can build with a fake sha256 and rely on native Go
-            # mechanisms to tell you what the hash should be or determine what
-            # it should be "out-of-band" with other tooling (eg. gomod2nix).
-            # To begin with it is recommended to set this, but one must
-            # remeber to bump this hash when your dependencies change.
-            #vendorSha256 = pkgs.lib.fakeSha256;
+            psitop = pkgs.buildGoModule {
+              pname = "psitop";
+              inherit version;
+              # In 'nix develop', we don't need a copy of the source tree
+              # in the Nix store.
+              src = ./.;
 
-            vendorSha256 = "sha256-oLtKpBvTsM5TbzfWIDfqgb7DL5D3Mldu0oimVeiUeSc=";
-          };
-        });
+              # This hash locks the dependencies of this package. It is
+              # necessary because of how Go requires network access to resolve
+              # VCS.  See https://www.tweag.io/blog/2021-03-04-gomod2nix/ for
+              # details. Normally one can build with a fake sha256 and rely on native Go
+              # mechanisms to tell you what the hash should be or determine what
+              # it should be "out-of-band" with other tooling (eg. gomod2nix).
+              # To begin with it is recommended to set this, but one must
+              # remeber to bump this hash when your dependencies change.
+              #vendorSha256 = pkgs.lib.fakeSha256;
+
+              vendorSha256 = "sha256-oLtKpBvTsM5TbzfWIDfqgb7DL5D3Mldu0oimVeiUeSc=";
+            };
+
+            dockerImage = pkgs.dockerTools.buildImage {
+              name = "psitop";
+              config = { Cmd = [ "${psitop}/bin/psitop" ]; };
+            };
+          in
+          {
+            psitop = psitop;
+            dockerImage = dockerImage;
+          });
 
       # Add dependencies that are only needed for development
       devShells = forAllSystems (system:
