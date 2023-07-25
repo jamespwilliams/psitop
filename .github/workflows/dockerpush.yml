@@ -1,7 +1,6 @@
 name: "Upload docker image"
 on:
   push:
-    # TODO: remove:
     tags:
       - '*'
 jobs:
