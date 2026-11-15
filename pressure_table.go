@@ -32,7 +32,7 @@ func newPressureTable(title string, somePressures, fullPressures []pressure.Pres
 
 		current := pressures[len(pressures)-1]
 		var previous *pressure.Pressure
-		if len(pressures) > 2 {
+		if len(pressures) >= 2 {
 			previous = &pressures[len(pressures)-2]
 		}
 
