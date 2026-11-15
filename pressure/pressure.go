@@ -2,7 +2,7 @@ package pressure
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -91,10 +91,11 @@ func parsePressureLine(line string) (*Pressure, error) {
 
 // cpu pressure is special - 'full' is always zero, and some distributions omit that line entirely.
 func parseCPUPressure(s string) (some *Pressure, err error) {
-	lines := strings.Split(s, "\n")
-	if len(lines) < 2 {
-		return nil, fmt.Errorf("expected at least 1 lines in /proc/pressure/cpu contents %q, got %d", s, len(lines))
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
+		return nil, fmt.Errorf("expected at least 1 line in /proc/pressure/cpu contents %q, got 0", s)
 	}
+	lines := strings.Split(trimmed, "\n")
 
 	some, err = parsePressureLine(lines[0])
 	if err != nil {
@@ -105,8 +106,12 @@ func parseCPUPressure(s string) (some *Pressure, err error) {
 }
 
 func parseNonCPUPressure(s string) (some *Pressure, full *Pressure, err error) {
-	lines := strings.Split(s, "\n")
-	if len(lines) < 3 {
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
+		return nil, nil, fmt.Errorf("expected at least 2 lines in /proc/pressure contents %q, got 0", s)
+	}
+	lines := strings.Split(trimmed, "\n")
+	if len(lines) < 2 {
 		return nil, nil, fmt.Errorf("expected at least 2 lines in /proc/pressure contents %q, got %d", s, len(lines))
 	}
 
@@ -117,7 +122,7 @@ func parseNonCPUPressure(s string) (some *Pressure, full *Pressure, err error) {
 
 	full, err = parsePressureLine(lines[1])
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse 'some' /proc/pressure line %q: %w", lines[1], err)
+		return nil, nil, fmt.Errorf("failed to parse 'full' /proc/pressure line %q: %w", lines[1], err)
 	}
 
 	return some, full, nil
@@ -126,7 +131,7 @@ func parseNonCPUPressure(s string) (some *Pressure, full *Pressure, err error) {
 // CurrentCPUPressure reads /proc/pressure/cpu and returns a Pressure struct
 // representing its output
 func CurrentCPUPressure() (some *Pressure, err error) {
-	s, err := ioutil.ReadFile("/proc/pressure/cpu")
+	s, err := os.ReadFile("/proc/pressure/cpu")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read /proc/pressure/cpu: %w", err)
 	}
@@ -136,7 +141,7 @@ func CurrentCPUPressure() (some *Pressure, err error) {
 // CurrentIOPressure reads /proc/pressure/io and returns a Pressure struct
 // representing its output
 func CurrentIOPressure() (some *Pressure, full *Pressure, err error) {
-	s, err := ioutil.ReadFile("/proc/pressure/io")
+	s, err := os.ReadFile("/proc/pressure/io")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read /proc/pressure/io: %w", err)
 	}
@@ -146,9 +151,9 @@ func CurrentIOPressure() (some *Pressure, full *Pressure, err error) {
 // CurrentMemoryPressure reads /proc/pressure/memory and returns a Pressure struct
 // representing its output
 func CurrentMemoryPressure() (some *Pressure, full *Pressure, err error) {
-	s, err := ioutil.ReadFile("/proc/pressure/memory")
+	s, err := os.ReadFile("/proc/pressure/memory")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read /proc/pressure/mem: %w", err)
+		return nil, nil, fmt.Errorf("failed to read /proc/pressure/memory: %w", err)
 	}
 	return parseNonCPUPressure(string(s))
 }
